@@ -10,12 +10,35 @@ services:
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
 
+  zabbix-agent2:
+    image: zabbix/zabbix-agent2:latest
+    container_name: zabbix-agent2
+    ports:
+      - "10050:10050"
+    environment:
+      - ZBX_SERVER_HOST=zabbix-server
+      - ZBX_HOSTNAME=Zabbix server
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    privileged: true
+    restart: always
+
   node-exporter:
     image: prom/node-exporter:latest
     container_name: node-exporter
-    restart: always
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
     ports:
       - "9100:9100"
+    restart: always
 
   zabbix-db:
     image: postgres:15-alpine
@@ -47,7 +70,7 @@ services:
     container_name: zabbix-web
     restart: always
     ports:
-      - "8085:8080"
+      - "8080:8080"
     environment:
       - DB_SERVER_HOST=zabbix-db
       - POSTGRES_USER=zabbix
@@ -58,13 +81,14 @@ services:
     depends_on:
       - zabbix-db
       - zabbix-server
-
   grafana:
     image: grafana/grafana-oss:latest
     container_name: grafana
     restart: always
     ports:
       - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
     environment:
       - GF_INSTALL_PLUGINS=alexanderzobnin-zabbix-app
     depends_on:
@@ -73,3 +97,4 @@ services:
 
 volumes:
   zabbix-db-data:
+  grafana-data:
